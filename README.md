@@ -415,10 +415,10 @@ Este proyecto está bajo la licencia MIT. Ver archivo [LICENSE](LICENSE) para m�
 
 ## 📧 Contacto
 
-- **Autor**: Ariel Giamporte
-- **Email**: [tu-email@ejemplo.com]
+- **Autor**: Ariel Giamportone
+- **Email**: [giamportone1@gmail.com]
 - **LinkedIn**: [Tu LinkedIn]
-- **GitHub**: [@tu-usuario](https://github.com/tu-usuario)
+- **GitHub**: [@https://github.com/arielgiamportone/](https://github.com/arielgiamportone/)
 
 ---
 
