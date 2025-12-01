@@ -5,6 +5,7 @@ Handles loading and validation of configuration from YAML and environment variab
 
 import os
 import yaml
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
 from dotenv import load_dotenv
@@ -186,7 +187,15 @@ class Config:
         output_dir = Path(self.get('output.base_dir', 'output'))
         if not output_dir.is_absolute():
             output_dir = self.project_root / output_dir
-        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Try to create directory, use temp if permission denied
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError):
+            # Use temp directory in Streamlit Cloud or restricted environments
+            output_dir = Path(tempfile.gettempdir()) / 'transcriptor_outputs'
+            output_dir.mkdir(parents=True, exist_ok=True)
+        
         return output_dir
     
     def setup_logging(self):
@@ -203,19 +212,23 @@ class Config:
             level=log_level,
         )
         
-        # Add file handler
-        log_file = self.output_dir / 'reports' / 'processing.log'
-        log_file.parent.mkdir(parents=True, exist_ok=True)
-        
-        logger.add(
-            str(log_file),
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function} - {message}",
-            level=log_level,
-            rotation="100 MB",
-            retention="30 days",
-        )
-        
-        logger.info(f"Logging configured. Level: {log_level}, File: {log_file}")
+        # Add file handler (skip if permission denied in cloud)
+        try:
+            log_file = self.output_dir / 'reports' / 'processing.log'
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            logger.add(
+                str(log_file),
+                format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function} - {message}",
+                level=log_level,
+                rotation="100 MB",
+                retention="30 days",
+            )
+            logger.info(f"Logging configured. Level: {log_level}, File: {log_file}")
+        except (PermissionError, OSError) as e:
+            # Skip file logging in Streamlit Cloud
+            logger.warning(f"File logging disabled due to permissions: {e}")
+            logger.info(f"Logging configured. Level: {log_level}, Console only")
     
     def to_dict(self) -> Dict[str, Any]:
         """Return full configuration as dictionary"""
