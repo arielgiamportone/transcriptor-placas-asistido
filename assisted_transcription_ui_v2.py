@@ -2070,49 +2070,211 @@ def main():
         # File uploaders
         st.markdown("### 📤 Cargar Archivos")
         
-        excel_file = st.file_uploader(
-            "1️⃣ Cargar archivo Excel",
-            type=['xlsx', 'xls'],
-            help="Excel con columnas 'BarCode' e imágenes"
+        # Tab selection for different load methods
+        load_method = st.radio(
+            "Método de carga",
+            ["📁 Subir archivos", "☁️ Desde Google Drive", "☁️ Desde OneDrive"],
+            horizontal=True,
+            help="Elige cómo cargar tus datos"
         )
         
-        zip_file = st.file_uploader(
-            "2️⃣ Cargar ZIP con imágenes (opcional)",
-            type=['zip'],
-            help="ZIP con todas las carpetas de imágenes referenciadas en el Excel"
-        )
-        
-        if excel_file:
-            # Save uploaded file
-            excel_path = st.session_state.config.output_dir / excel_file.name
-            with open(excel_path, 'wb') as f:
-                f.write(excel_file.read())
+        if load_method == "📁 Subir archivos":
+            excel_file = st.file_uploader(
+                "1️⃣ Cargar archivo Excel",
+                type=['xlsx', 'xls'],
+                help="Excel con columnas 'BarCode' e imágenes"
+            )
             
-            st.session_state.excel_path = str(excel_path)
+            zip_file = st.file_uploader(
+                "2️⃣ Cargar ZIP con imágenes (opcional)",
+                type=['zip'],
+                help="ZIP con todas las carpetas de imágenes referenciadas en el Excel"
+            )
             
-            # Extract ZIP if provided
-            if zip_file:
-                import zipfile
-                zip_path = st.session_state.config.output_dir / zip_file.name
-                with open(zip_path, 'wb') as f:
-                    f.write(zip_file.read())
+            if excel_file:
+                # Save uploaded file
+                excel_path = st.session_state.config.output_dir / excel_file.name
+                with open(excel_path, 'wb') as f:
+                    f.write(excel_file.read())
                 
-                # Extract to output directory
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(st.session_state.config.output_dir)
+                st.session_state.excel_path = str(excel_path)
                 
-                st.info(f"✅ ZIP extraído en: {st.session_state.config.output_dir}")
-            
-            if st.button("🚀 Cargar Excel", use_container_width=True):
-                with st.spinner("Cargando..."):
-                    loaded_df = load_excel_data(str(excel_path), st.session_state.config.output_dir)
+                # Extract ZIP if provided
+                if zip_file:
+                    import zipfile
+                    zip_path = st.session_state.config.output_dir / zip_file.name
+                    with open(zip_path, 'wb') as f:
+                        f.write(zip_file.read())
                     
-                    if loaded_df is not None:
-                        st.session_state.data_df = loaded_df
-                        st.session_state.current_index = 0
-                        st.session_state.results = []
-                        st.success("✅ Excel cargado correctamente")
-                        st.rerun()
+                    # Extract to output directory
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(st.session_state.config.output_dir)
+                    
+                    st.info(f"✅ ZIP extraído en: {st.session_state.config.output_dir}")
+                
+                if st.button("🚀 Cargar Excel", use_container_width=True):
+                    with st.spinner("Cargando..."):
+                        loaded_df = load_excel_data(str(excel_path), st.session_state.config.output_dir)
+                        
+                        if loaded_df is not None:
+                            st.session_state.data_df = loaded_df
+                            st.session_state.current_index = 0
+                            st.session_state.results = []
+                            st.success("✅ Excel cargado correctamente")
+                            st.rerun()
+        
+        else:  # Google Drive
+            st.markdown("#### ☁️ Cargar desde Google Drive")
+            st.info("""
+            **Cómo usar:**
+            1. Sube tu ZIP con imágenes a Google Drive
+            2. Haz clic derecho → Compartir → Obtener enlace
+            3. Asegúrate que sea "Cualquiera con el enlace puede ver"
+            4. Pega el enlace abajo
+            """)
+            
+            gdrive_url = st.text_input(
+                "URL de Google Drive (ZIP con imágenes)",
+                placeholder="https://drive.google.com/file/d/1ABC.../view?usp=sharing",
+                help="El archivo debe ser público (cualquiera con el enlace)"
+            )
+            
+            excel_file_gdrive = st.file_uploader(
+                "Cargar archivo Excel",
+                type=['xlsx', 'xls'],
+                key="excel_gdrive"
+            )
+            
+            if gdrive_url and excel_file_gdrive and st.button("🚀 Cargar desde Google Drive", use_container_width=True):
+                with st.spinner("Descargando ZIP desde Google Drive..."):
+                    try:
+                        import gdown
+                        import zipfile
+                        
+                        # Extract file ID from Google Drive URL
+                        file_id = None
+                        if '/file/d/' in gdrive_url:
+                            file_id = gdrive_url.split('/file/d/')[1].split('/')[0]
+                        elif 'id=' in gdrive_url:
+                            file_id = gdrive_url.split('id=')[1].split('&')[0]
+                        
+                        if not file_id:
+                            st.error("❌ URL de Google Drive inválida")
+                        else:
+                            # Download ZIP
+                            zip_path = st.session_state.config.output_dir / 'gdrive_images.zip'
+                            gdown.download(id=file_id, output=str(zip_path), quiet=False)
+                            
+                            # Extract ZIP
+                            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                                zip_ref.extractall(st.session_state.config.output_dir)
+                            
+                            st.success(f"✅ ZIP descargado y extraído")
+                            
+                            # Save Excel
+                            excel_path = st.session_state.config.output_dir / excel_file_gdrive.name
+                            with open(excel_path, 'wb') as f:
+                                f.write(excel_file_gdrive.read())
+                            
+                            # Load data
+                            loaded_df = load_excel_data(str(excel_path), st.session_state.config.output_dir)
+                            
+                            if loaded_df is not None:
+                                st.session_state.data_df = loaded_df
+                                st.session_state.current_index = 0
+                                st.session_state.results = []
+                                st.success("✅ Excel cargado correctamente")
+                                st.rerun()
+                    
+                    except Exception as e:
+                        st.error(f"❌ Error al descargar desde Google Drive: {str(e)}")
+                        st.error("Verifica que el archivo sea público y la URL sea correcta")
+        
+        elif load_method == "☁️ Desde OneDrive":
+            st.markdown("#### ☁️ Cargar desde OneDrive")
+            st.info("""
+            **Cómo usar:**
+            1. Sube tu ZIP con imágenes a OneDrive
+            2. Clic derecho → Compartir → Copiar enlace
+            3. Asegúrate que sea "Cualquiera con el enlace puede ver"
+            4. Pega el enlace abajo
+            """)
+            
+            onedrive_url = st.text_input(
+                "URL de OneDrive (ZIP con imágenes)",
+                placeholder="https://1drv.ms/u/s!ABC.../archivo.zip",
+                help="El archivo debe ser público (cualquiera con el enlace)"
+            )
+            
+            excel_file_onedrive = st.file_uploader(
+                "Cargar archivo Excel",
+                type=['xlsx', 'xls'],
+                key="excel_onedrive"
+            )
+            
+            if onedrive_url and excel_file_onedrive and st.button("🚀 Cargar desde OneDrive", use_container_width=True):
+                with st.spinner("Descargando ZIP desde OneDrive..."):
+                    try:
+                        import requests
+                        import zipfile
+                        
+                        # Convert OneDrive share link to direct download link
+                        direct_url = onedrive_url
+                        
+                        # Handle different OneDrive URL formats
+                        if '1drv.ms' in onedrive_url or 'onedrive.live.com' in onedrive_url:
+                            # Convert share link to direct download
+                            # Replace 'redir' with 'download' or add '&download=1'
+                            if '?resid=' in onedrive_url:
+                                direct_url = onedrive_url + '&download=1'
+                            elif '/view.aspx' in onedrive_url:
+                                direct_url = onedrive_url.replace('/view.aspx', '/download.aspx')
+                            elif 'embed' not in onedrive_url and 'download' not in onedrive_url:
+                                # For simple share links, add download parameter
+                                separator = '&' if '?' in onedrive_url else '?'
+                                direct_url = onedrive_url + separator + 'download=1'
+                        
+                        st.info(f"Descargando desde: {direct_url[:50]}...")
+                        
+                        # Download file
+                        response = requests.get(direct_url, allow_redirects=True, timeout=300)
+                        
+                        if response.status_code == 200:
+                            # Save ZIP
+                            zip_path = st.session_state.config.output_dir / 'onedrive_images.zip'
+                            with open(zip_path, 'wb') as f:
+                                f.write(response.content)
+                            
+                            st.success(f"✅ ZIP descargado ({len(response.content) / (1024*1024):.1f} MB)")
+                            
+                            # Extract ZIP
+                            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                                zip_ref.extractall(st.session_state.config.output_dir)
+                            
+                            st.success(f"✅ ZIP extraído")
+                            
+                            # Save Excel
+                            excel_path = st.session_state.config.output_dir / excel_file_onedrive.name
+                            with open(excel_path, 'wb') as f:
+                                f.write(excel_file_onedrive.read())
+                            
+                            # Load data
+                            loaded_df = load_excel_data(str(excel_path), st.session_state.config.output_dir)
+                            
+                            if loaded_df is not None:
+                                st.session_state.data_df = loaded_df
+                                st.session_state.current_index = 0
+                                st.session_state.results = []
+                                st.success("✅ Excel cargado correctamente")
+                                st.rerun()
+                        else:
+                            st.error(f"❌ Error HTTP {response.status_code}")
+                            st.error("Verifica que el enlace sea de descarga directa y el archivo sea público")
+                            st.info("💡 Tip: En OneDrive, después de copiar el enlace, puedes agregar '&download=1' al final")
+                    
+                    except Exception as e:
+                        st.error(f"❌ Error al descargar desde OneDrive: {str(e)}")
+                        st.error("Verifica que el archivo sea público y la URL sea correcta")
         
         # Options
         if st.session_state.data_df is not None:
