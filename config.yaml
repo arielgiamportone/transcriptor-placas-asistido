@@ -1,0 +1,293 @@
+# Configuration for Industrial Image Extractor
+# Version: 1.0
+
+# Processing mode: "api_only", "local_only", "hybrid"
+processing:
+  mode: "hybrid"
+  max_workers: 4
+  batch_size: 100
+  use_multiprocessing: true
+  checkpoint_enabled: true
+  checkpoint_interval: 100  # Save progress every N images
+
+# API configuration (for api_only or hybrid modes)
+api:
+  provider: "openai"  # "openai", "anthropic", "google"
+  model: "gpt-4o-mini-2024-07-18"
+  use_batch: false  # Set to true for batch API (50% discount, 24h processing)
+  max_retries: 3
+  timeout: 30  # seconds
+  rate_limit_rpm: 500  # requests per minute
+  structured_output: true
+  intelligent_validation: true  # Enable intelligent validation and correction of extracted data
+  
+  # Assisted transcription mode
+  assisted_mode:
+    enabled: true
+    available_models:
+      - name: "GPT-4o Mini"
+        id: "gpt-4o-mini-2024-07-18"
+        cost_per_1k_tokens: 0.00015  # Input cost (approximate)
+        description: "Rápido y económico, buena precisión"
+        recommended: true
+      - name: "GPT-4o"
+        id: "gpt-4o-2024-08-06"
+        cost_per_1k_tokens: 0.0025  # Input cost (approximate)
+        description: "Máxima precisión, más lento y costoso"
+        recommended: false
+      - name: "GPT-4 Turbo"
+        id: "gpt-4-turbo-2024-04-09"
+        cost_per_1k_tokens: 0.01
+        description: "Alta precisión, costoso"
+        recommended: false
+    default_model: "gpt-4o-mini-2024-07-18"
+    use_preprocessed_images: true  # Use preprocessed images for better results
+    detail_level: "high"  # "low", "high" - affects token usage and quality
+
+# Local extraction configuration
+local:
+  ocr:
+    engine: "easyocr"  # "easyocr", "paddleocr", "tesseract"
+    languages: ["es", "en", "de", "fr", "it"]
+    gpu: true
+    confidence_threshold: 0.80
+    
+    # Assisted transcription mode
+    assisted_mode:
+      enabled: true
+      use_preprocessed_images: true
+      high_confidence_threshold: 0.85
+      medium_confidence_threshold: 0.60
+  
+  vlm:
+    model: "Qwen/Qwen2-VL-7B-Instruct"
+    use_quantization: false  # Set to true for 8-bit quantization if GPU memory limited
+    gpu: true
+    max_tokens: 512
+  
+  routing:
+    use_confidence_routing: true
+    high_confidence_threshold: 0.80  # Above this, use regex parsing
+    low_confidence_threshold: 0.60   # Below this, escalate to VLM
+
+# Image preprocessing configuration
+preprocessing:
+  enabled: true
+  steps:
+    - rotation_correction
+    - perspective_correction
+    - reflection_reduction
+    - denoising
+    - contrast_enhancement
+    - sharpening
+    - adaptive_binarization
+  
+  rotation:
+    method: "minAreaRect"
+    angle_tolerance: 2.0  # degrees
+  
+  reflection:
+    enabled: true  # Critical for metallic nameplates
+    method: "hsv_inpainting"
+  
+  contrast:
+    method: "clahe"
+    clip_limit: 2.0
+    tile_grid_size: [8, 8]
+  
+  denoising:
+    method: "non_local_means"
+    h: 10
+  
+  save_preprocessed: true
+
+# Image routing (complexity analysis)
+routing:
+  enabled: true
+  criteria:
+    blur_threshold: 100  # Laplacian variance
+    contrast_threshold: 50
+    text_density_threshold: 0.1
+  
+  simple_path: "api"  # For simple, clear images
+  complex_path: "local"  # For degraded, rotated, or complex images
+
+# Validation configuration
+validation:
+  enabled: true
+  
+  format_validation:
+    enabled: true
+    patterns:
+      serial_number:
+        - '(?:S/?N|Serial|Serie|Número de Serie)[:\s]+([A-Z0-9\-]{5,20})'
+        - '\b([A-Z]{2}\d{8,12})\b'
+        - '\b(\d{2}-\d{5}-\d{6})\b'
+      year:
+        - '(?:Año|Year|Date|Fecha)[:\s]+(\d{4})'
+      brand:
+        - '^([A-Z]{3,15})'
+      scada_code:
+        - '\b([A-Z0-9\-\.]{10,30})\b'
+  
+  range_validation:
+    enabled: true
+    year_min: 1950
+    year_max: 2025
+    serial_number_min_length: 5
+    serial_number_max_length: 30
+  
+  catalog_validation:
+    enabled: true
+    brand_catalog_path: "data/brand_catalog.json"
+    model_patterns_path: "data/model_patterns.json"
+    fuzzy_matching: true
+    fuzzy_threshold: 0.85
+  
+  cross_field_validation:
+    enabled: true
+    # Add custom rules for model-year compatibility
+
+# HITL (Human-in-the-Loop) classification
+hitl:
+  enabled: true
+  thresholds:
+    auto_accept: 0.90  # Tier 1
+    quick_review: 0.70  # Tier 2
+    # Below quick_review is Tier 3 (detailed review)
+  
+  review_percentage_target: 10  # Target ≤10% for manual review
+  
+  prioritization:
+    - missing_critical_fields
+    - low_validation_score
+    - conflicting_data
+    - low_extraction_confidence
+
+# Output configuration
+output:
+  base_dir: "Output"  # Changed to Output folder in workspace root
+  
+  export:
+    complete_csv: true
+    tier_csvs: true
+    error_csv: true
+    json_backup: true
+  
+  images:
+    save_originals: true
+    save_preprocessed: true
+    save_annotated: false  # With bounding boxes
+  
+  reports:
+    generate_dashboard: true
+    dashboard_format: "html"  # "html", "pdf"
+    generate_metrics: true
+    generate_logs: true
+    log_level: "INFO"  # "DEBUG", "INFO", "WARNING", "ERROR"
+
+# Data schema
+schema:
+  fields:
+    - name: "barcode"
+      type: "string"
+      required: true
+      primary_key: true
+    
+    - name: "tipo_imagen"
+      type: "string"
+      required: true
+      values: ["placa_tecnica", "codigo_scada", "desconocido"]
+    
+    - name: "marca"
+      type: "string"
+      required: false
+    
+    - name: "modelo"
+      type: "string"
+      required: false
+    
+    - name: "numero_serie"
+      type: "string"
+      required: false
+    
+    - name: "año"
+      type: "integer"
+      required: false
+      min: 1950
+      max: 2025
+    
+    - name: "codigo_scada_principal"
+      type: "string"
+      required: false
+    
+    - name: "validation_score"
+      type: "float"
+      required: true
+      min: 0.0
+      max: 1.0
+    
+    - name: "confidence"
+      type: "float"
+      required: true
+      min: 0.0
+      max: 1.0
+    
+    - name: "metodo_extraccion"
+      type: "string"
+      required: true
+      values: ["api", "easyocr", "qwen2vl", "hybrid"]
+    
+    - name: "requires_review"
+      type: "boolean"
+      required: true
+    
+    - name: "tier"
+      type: "integer"
+      required: true
+      values: [1, 2, 3]
+    
+    - name: "validation_issues"
+      type: "array"
+      required: true
+    
+    - name: "procesado_timestamp"
+      type: "datetime"
+      required: true
+
+# Performance and resource management
+performance:
+  gpu_memory_fraction: 0.8  # Reserve 20% for system
+  cpu_threads: 0  # 0 = auto-detect
+  disk_cache_enabled: true
+  disk_cache_size_gb: 10
+  
+  timeouts:
+    preprocessing: 30  # seconds per image
+    extraction: 60  # seconds per image
+    validation: 5  # seconds per image
+
+# Monitoring and telemetry
+monitoring:
+  enabled: true
+  metrics:
+    - processing_time
+    - success_rate
+    - error_rate
+    - confidence_distribution
+    - field_completeness
+    - cost_per_image
+  
+  alerts:
+    error_rate_threshold: 0.10  # Alert if >10% errors
+    low_confidence_threshold: 0.60  # Alert if many low confidence results
+
+# Feature flags (for gradual rollout)
+features:
+  consensus_voting: false  # Run multiple extractors and vote
+  fine_tuning: false  # Fine-tune models with corrected data
+  distributed_processing: false  # Use Ray for distribution
+  web_ui: false  # Streamlit UI for HITL review
+
+# Environment-specific overrides (development, staging, production)
+environment: "development"  # "development", "staging", "production"

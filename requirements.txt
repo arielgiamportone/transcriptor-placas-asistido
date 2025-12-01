@@ -1,0 +1,43 @@
+# Core Data Processing
+pandas>=2.0.0,<3.0.0
+numpy>=1.24.0,<2.0.0
+openpyxl>=3.1.0,<4.0.0
+openpyxl-image-loader>=1.0.5,<2.0.0
+Pillow>=10.0.0,<11.0.0
+
+# Image Processing
+opencv-python-headless>=4.8.0,<5.0.0  # Headless version for cloud deployment
+scikit-image>=0.21.0,<1.0.0
+
+# OCR and Vision Models
+easyocr>=1.7.0,<2.0.0
+torch>=2.1.0,<3.0.0
+torchvision>=0.16.0,<1.0.0
+transformers>=4.35.0,<5.0.0
+
+# Streamlit Framework
+streamlit>=1.29.0,<2.0.0
+streamlit-drawable-canvas>=0.9.3,<1.0.0
+
+# API Clients
+openai>=1.3.0,<2.0.0
+anthropic>=0.7.0,<1.0.0
+google-generativeai>=0.3.0,<1.0.0
+
+# Data Validation
+pydantic>=2.5.0,<3.0.0
+jsonschema>=4.20.0,<5.0.0
+
+# Utilities
+python-dotenv>=1.0.0,<2.0.0
+tqdm>=4.66.0,<5.0.0
+loguru>=0.7.0,<1.0.0
+pyyaml>=6.0.0,<7.0.0
+
+# Visualization
+matplotlib>=3.8.0,<4.0.0
+plotly>=5.18.0,<6.0.0
+
+# Testing (dev only)
+pytest>=7.4.0,<8.0.0
+pytest-cov>=4.1.0,<5.0.0

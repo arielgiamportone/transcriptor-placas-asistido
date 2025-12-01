@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PIPFILE.lock
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Data & Outputs
+Data/
+Output/
+outputs/
+logs/
+*.log
+*.csv
+*.xlsx
+*.json
+!.gitkeep
+
+# Checkpoints
+checkpoints/
+batch_results/
+
+# Models (large files)
+*.pth
+*.pt
+*.h5
+*.ckpt
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary
+temp/
+tmp/
+*.tmp
