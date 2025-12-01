@@ -534,8 +534,9 @@ def load_excel_data(excel_path: str, output_dir: Path):
         if stats['total_images'] == 0 or len(df_with_images) == 0:
             st.error(f"⚠️ No se encontraron imágenes. Verifica que:")
             st.error(f"   - Las celdas contengan rutas a archivos de imágenes")
-            st.error(f"   - Las carpetas con las imágenes estén en la misma ubicación que el Excel")
-            st.error(f"   - Las rutas sean correctas (ej: 'DESCARGA 20250411_Image/IMG_000127_18057.jpg')")
+            st.error(f"   - **En Streamlit Cloud:** Sube un ZIP con todas las carpetas de imágenes")
+            st.error(f"   - Las carpetas del ZIP deben coincidir con las rutas del Excel")
+            st.error(f"   - Ejemplo: Si el Excel dice 'DESCARGA/IMG_001.jpg', el ZIP debe tener la carpeta 'DESCARGA' con las imágenes")
             st.warning(f"📊 Estadísticas:")
             st.warning(f"   - Filas procesadas: {stats.get('total_rows', 0)}")
             st.warning(f"   - Filas con imágenes: {stats.get('rows_with_images', 0)}")
@@ -2066,11 +2067,19 @@ def main():
         
         st.markdown("---")
         
-        # File uploader
+        # File uploaders
+        st.markdown("### 📤 Cargar Archivos")
+        
         excel_file = st.file_uploader(
-            "Cargar archivo Excel",
+            "1️⃣ Cargar archivo Excel",
             type=['xlsx', 'xls'],
             help="Excel con columnas 'BarCode' e imágenes"
+        )
+        
+        zip_file = st.file_uploader(
+            "2️⃣ Cargar ZIP con imágenes (opcional)",
+            type=['zip'],
+            help="ZIP con todas las carpetas de imágenes referenciadas en el Excel"
         )
         
         if excel_file:
@@ -2080,6 +2089,19 @@ def main():
                 f.write(excel_file.read())
             
             st.session_state.excel_path = str(excel_path)
+            
+            # Extract ZIP if provided
+            if zip_file:
+                import zipfile
+                zip_path = st.session_state.config.output_dir / zip_file.name
+                with open(zip_path, 'wb') as f:
+                    f.write(zip_file.read())
+                
+                # Extract to output directory
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(st.session_state.config.output_dir)
+                
+                st.info(f"✅ ZIP extraído en: {st.session_state.config.output_dir}")
             
             if st.button("🚀 Cargar Excel", use_container_width=True):
                 with st.spinner("Cargando..."):
